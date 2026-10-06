@@ -1,0 +1,7 @@
+__pycache__/
+*.pt
+*.mp4
+chroma_db/
+.env
+.venv/
+venv/

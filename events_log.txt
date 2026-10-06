@@ -1,0 +1,21 @@
+[2026-10-06 22:17:48] Activity detected: 1 person
+[2026-10-06 22:17:50] Activity detected: 1 person
+[2026-10-06 22:17:52] Activity detected: 1 person, 1 cell phone, 1 frisbee
+[2026-10-06 22:17:54] Activity detected: 1 person, 1 cell phone
+[2026-10-06 22:17:56] Activity detected: 1 cell phone, 1 person
+[2026-10-06 22:17:58] Activity detected: 1 cell phone, 1 person
+[2026-10-06 22:18:00] Activity detected: 3 person, 1 remote
+[2026-10-06 22:18:02] Activity detected: 1 person, 1 cell phone
+[2026-10-06 22:18:05] Activity detected: 1 person, 1 cell phone
+[2026-10-06 22:18:07] Activity detected: 1 person
+[2026-10-06 22:18:09] Activity detected: 1 person
+[2026-10-06 22:18:11] Activity detected: 1 person
+[2026-10-06 22:31:05] Activity detected: 1 person | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:08] Activity detected: 1 person | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:11] Activity detected: 1 person, 1 frisbee | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:14] Activity detected: 1 person, 1 frisbee | Face ID: Admin (Authorized)
+[2026-10-06 22:31:17] Activity detected: 1 person | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:20] Activity detected: 1 person | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:23] Activity detected: 1 person | Face ID: UNKNOWN THREAT
+[2026-10-06 22:31:26] Activity detected: 1 person | Face ID: Admin (Authorized)
+[2026-10-06 22:31:30] Activity detected: 1 person, 1 frisbee | Face ID: UNKNOWN THREAT
