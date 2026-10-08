@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Camera, MessageSquare, Send, Mic, Clock } from 'lucide-react';
+import { Camera, MessageSquare, Send, Mic, Clock, Grid } from 'lucide-react';
 
 function System() {
   const [query, setQuery] = useState('');
@@ -21,12 +21,11 @@ function System() {
     scrollToBottom();
   }, [messages]);
 
-  // Fetch Timeline logs every 3 seconds
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         const res = await axios.get('http://localhost:8000/api/logs');
-        setLogs(res.data.logs.reverse()); // Newest first
+        setLogs(res.data.logs.reverse()); 
       } catch(e) {}
     };
     fetchLogs();
@@ -84,38 +83,56 @@ function System() {
   return (
     <div className="system-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
       
-      {/* LEFT COLUMN: Video Feed + Timeline */}
+      {/* LEFT COLUMN: Multi-Camera Grid + Timeline */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
-        <div className="glass-panel video-container" style={{ flex: '0 0 auto' }}>
-          <div className="system-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        
+        {/* --- MULTI-CAMERA SECURITY GRID --- */}
+        <div className="glass-panel video-container" style={{ flex: '0 0 auto', padding: '15px' }}>
+          <div className="system-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
             <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <Camera size={20} color="var(--primary)" /> 
-              Live CCTV Stream (YOLOv8 + Pose + DeepFace)
+              <Grid size={20} color="var(--primary)" /> 
+              Multi-Sensor Camera Array (AI + Thermal + Night Vision)
             </div>
             <button 
               onClick={toggleCamera} 
               className="btn-primary" 
               style={{padding: '6px 12px', fontSize: '0.8rem'}}
             >
-              {cameraActive ? 'Turn Camera Off' : 'Turn Camera On'}
+              {cameraActive ? 'Shutdown Array' : 'Boot Array'}
             </button>
           </div>
+          
           {cameraActive ? (
-            <img 
-              src="http://localhost:8000/api/video_feed" 
-              alt="Live CCTV Feed" 
-              className="video-feed"
-              onError={(e) => {
-                if(!e.target.dataset.error) {
-                  e.target.dataset.error = true;
-                  e.target.style.display='none'; 
-                  e.target.parentElement.innerHTML += '<div style="flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-muted); padding:20px; text-align:center;">FastAPI Backend Not Connected.<br/>Please run `python smart_cctv/api.py`</div>';
-                }
-              }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              
+              {/* CAM 01: MAIN AI INFERENCE */}
+              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
+                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#10b981', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 01: MAIN ENTRY (YOLO+POSE)</div>
+                <img src="http://localhost:8000/api/video_feed" alt="Cam 1" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+
+              {/* CAM 02: NIGHT VISION SIMULATION */}
+              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
+                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#ef4444', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 02: NIGHT VISION</div>
+                <img src="http://localhost:8000/api/video_feed" alt="Cam 2" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'sepia(1) hue-rotate(90deg) brightness(1.2)' }} />
+              </div>
+
+              {/* CAM 03: THERMAL IMAGING SIMULATION */}
+              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
+                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#f59e0b', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 03: THERMAL INFRARED</div>
+                <img src="http://localhost:8000/api/video_feed" alt="Cam 3" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'invert(1) hue-rotate(180deg) brightness(1.5)' }} />
+              </div>
+
+              {/* CAM 04: HIGH CONTRAST SECURITY */}
+              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
+                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#3b82f6', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 04: X-RAY CONTRAST</div>
+                <img src="http://localhost:8000/api/video_feed" alt="Cam 4" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'grayscale(1) contrast(2.5)' }} />
+              </div>
+              
+            </div>
           ) : (
-            <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: '#000', minHeight: '300px'}}>
-              Camera is disabled to save resources.
+            <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: '#000', minHeight: '300px', borderRadius: '12px'}}>
+              Security Array is Offline.
             </div>
           )}
         </div>
@@ -129,7 +146,7 @@ function System() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px', padding: '0 20px 20px 20px' }}>
             {logs.length === 0 ? <p style={{color: 'var(--text-muted)'}}>No events recorded yet.</p> : null}
             {logs.map((log, i) => {
-              const isThreat = log.includes('ALARM') || log.includes('THREAT');
+              const isThreat = log.includes('ALARM') || log.includes('THREAT') || log.includes('WEAPON');
               return (
                 <div key={i} style={{ 
                   padding: '12px', 

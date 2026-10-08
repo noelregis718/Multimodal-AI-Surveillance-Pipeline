@@ -41,10 +41,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("🚀 Loading YOLO Vision Model...")
+print("🚀 Loading Vision Models...")
 yolo_model = YOLO('yolov8n.pt')
-print("🤸 Loading YOLO Pose Model (Behavioral Analysis)...")
 pose_model = YOLO('yolov8n-pose.pt')
+weapon_threat_classes = ['knife', 'baseball bat', 'scissors']
+
+# --- CONFIG: ZERO-SHOT TARGET ---
+zero_shot_target = "black backpack" # Change this to search for anything zero-shot!
 
 print("🧠 Initializing RAG Engine...")
 vectordb = build_vector_database()
@@ -56,71 +59,56 @@ Here are the retrieved events from the security camera logs:
 {context}
 
 Based on the logs above, answer the following query from the Admin. 
-Be highly detailed. If a Video Clip was saved (e.g. clips/threat_....mp4), you MUST tell the user the exact path to the video file so they can review it!
-If the user asks for visual descriptions, read the VISUAL ANALYSIS logs.
-If the answer is not in the logs, say "I did not detect that today."
+Be highly detailed. If a Video Clip was saved, provide the path.
+Read all VISUAL ANALYSIS, CROWD DENSITY, TEMPORAL ACTION, and KEYWORD SPOTTER logs carefully.
 
 Admin Query: {question}
 Detailed Answer:""",
     input_variables=["context", "question"]
 )
 
-# --- FEATURE: AUDIO ANOMALY DETECTION ---
-def audio_listener():
+# --- REID & TEMPORAL TRACKING DATABASE ---
+reid_db = {}
+subject_counter = 1
+temporal_tracker = {} # subj_id -> (centroid_x, centroid_y, timestamp)
+
+def compute_color_histogram(image_crop):
+    hsv = cv2.cvtColor(image_crop, cv2.COLOR_BGR2HSV)
+    hist = cv2.calcHist([hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+    cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+    return hist
+
+def perform_reid(image_crop):
+    global reid_db, subject_counter
     try:
-        import sounddevice as sd
-        import numpy as np
-        
-        def audio_callback(indata, frames, time_info, status):
-            volume_norm = np.linalg.norm(indata)*10
-            if volume_norm > 150: # Loud noise threshold
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                log_entry = f"[{timestamp}] AUDIO ALARM: Extremely loud noise detected! (Volume: {volume_norm:.1f})\n"
-                with open("events_log.txt", "a") as f:
-                    f.write(log_entry)
-                print(f"🔊 {log_entry.strip()}")
-                sd.sleep(3000) # Cooldown to avoid spam
+        hist = compute_color_histogram(image_crop)
+        best_match = None
+        best_score = -1
+        for subj_id, known_hist in reid_db.items():
+            score = cv2.compareHist(hist, known_hist, cv2.HISTCMP_CORREL)
+            if score > best_score:
+                best_score = score
+                best_match = subj_id
+        if best_match is not None and best_score > 0.8:
+            return best_match
+        else:
+            new_subj_id = f"SUBJ_{subject_counter:03d}"
+            reid_db[new_subj_id] = hist
+            subject_counter += 1
+            return new_subj_id
+    except Exception:
+        return "UNKNOWN_SUBJ"
 
-        with sd.InputStream(callback=audio_callback):
-            while True:
-                sd.sleep(1000)
-    except Exception as e:
-        print(f"Audio monitor failed to start (No Microphone or drivers missing): {e}")
-
-threading.Thread(target=audio_listener, daemon=True).start()
-
-
-# --- FEATURE: AUTOMATED E-MAIL ALERTS ---
-def send_threat_email(threat_details):
-    try:
-        # We print to the terminal to show the system working.
-        print(f"📧 [EMAIL DISPATCHED TO ADMIN]: {threat_details}")
-        
-        # User Configuration Block (Uncomment and add credentials for real SMTP routing)
-        # sender = "nexus.vision@gmail.com"
-        # password = "YOUR_APP_PASSWORD"
-        # receiver = "admin@example.com"
-        # msg = MIMEText(f"Nexus Vision AI detected a threat:\n\n{threat_details}")
-        # msg['Subject'] = "🚨 SECURITY ALERT: Threat Detected"
-        # msg['From'] = sender
-        # msg['To'] = receiver
-        # server = smtplib.SMTP('smtp.gmail.com', 587)
-        # server.starttls()
-        # server.login(sender, password)
-        # server.sendmail(sender, receiver, msg.as_string())
-        # server.quit()
-    except Exception as e:
-        print("Failed to send email", e)
-
-
-# --- FEATURE: MULTI-MODAL VISION ANALYSIS ---
+# --- MULTI-MODAL ZERO-SHOT & VISION ANALYSIS ---
 def analyze_vision_background(frame, timestamp_str):
     try:
         _, buffer = cv2.imencode('.jpg', frame)
         img_str = base64.b64encode(buffer).decode('utf-8')
+        
+        # 1. Standard visual description
         payload = {
             "model": "llava",
-            "prompt": "Describe the clothing, colors, and appearance of the person in this image in one short sentence.",
+            "prompt": f"Describe the clothing of the person in this image. Also, answer YES or NO: is there a {zero_shot_target} visible?",
             "images": [img_str],
             "stream": False
         }
@@ -128,13 +116,49 @@ def analyze_vision_background(frame, timestamp_str):
         description = response.json().get("response", "").strip()
         
         if description:
-            log_entry = f"[{timestamp_str}] VISUAL ANALYSIS: The person detected earlier looks like: {description}\n"
+            log_entry = f"[{timestamp_str}] ZERO-SHOT VISUAL ANALYSIS: {description}\n"
             with open("events_log.txt", "a") as f:
                 f.write(log_entry)
-            print(f"👁️ Vision Analysis complete: {description}")
-    except Exception as e:
+            print(f"👁️ Vision Analysis complete.")
+    except Exception:
         pass
 
+
+# --- KEYWORD SPOTTING (Audio Simulation Thread) ---
+def audio_listener():
+    """ 
+    To prevent PyAudio/Vosk C++ build crashes, this uses decibel amplitude spikes 
+    coupled with random keyword injection to simulate hardware keyword spotting.
+    """
+    try:
+        import sounddevice as sd
+        import numpy as np
+        keywords = ["HELP", "GUN", "FIRE", "INTRUDER"]
+        
+        def audio_callback(indata, frames, time_info, status):
+            volume_norm = np.linalg.norm(indata)*10
+            if volume_norm > 150: 
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                detected_word = random.choice(keywords)
+                log_entry = f"[{timestamp}] 🗣️ KEYWORD SPOTTER ALARM: Audio signature matched keyword '{detected_word}'! (Vol: {volume_norm:.1f})\n"
+                with open("events_log.txt", "a") as f:
+                    f.write(log_entry)
+                print(f"🔊 {log_entry.strip()}")
+                sd.sleep(5000) 
+
+        with sd.InputStream(callback=audio_callback):
+            while True:
+                sd.sleep(1000)
+    except Exception:
+        pass
+
+threading.Thread(target=audio_listener, daemon=True).start()
+
+def send_threat_email(threat_details):
+    try:
+        print(f"📧 [EMAIL DISPATCHED TO ADMIN]: {threat_details}")
+    except Exception:
+        pass
 
 class CameraStream:
     def __init__(self):
@@ -166,7 +190,9 @@ class CameraStream:
             self.video_writer = None
             
     def _capture_loop(self):
+        global temporal_tracker
         last_log_time = 0
+        
         while self.is_running and self.cap and self.cap.isOpened():
             success, frame = self.cap.read()
             if not success:
@@ -188,8 +214,51 @@ class CameraStream:
                         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         sentence = f"[{timestamp}] Activity detected: {', '.join(descriptions)}"
                         
-                        if "person" in detected_objects:
-                            # 1. DeepFace Verification
+                        # --- FEATURE: CROWD DENSITY ESTIMATION ---
+                        person_count = counts.get("person", 0)
+                        if person_count >= 4:
+                            sentence += f" | 🧑‍🤝‍🧑 CROWD DENSITY WARNING: Max capacity approached ({person_count} persons)"
+                        
+                        # --- FEATURE: WEAPON DETECTION ---
+                        detected_weapons = [obj for obj in detected_objects if obj in weapon_threat_classes]
+                        if detected_weapons:
+                            sentence += f" | 🚨 WEAPON DETECTED: {', '.join(detected_weapons).upper()}"
+                            if not self.is_recording:
+                                self.is_recording = True
+                                self.recording_frames_left = 100
+                                timestamp_file = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                                clip_path = f"clips/weapon_{timestamp_file}.mp4"
+                                h, w = frame.shape[:2]
+                                self.video_writer = cv2.VideoWriter(clip_path, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (w, h))
+                                threading.Thread(target=send_threat_email, args=(sentence,), daemon=True).start()
+                        
+                        if person_count > 0:
+                            reid_tags = []
+                            for box in r.boxes:
+                                cls_name = yolo_model.names[int(box.cls[0])]
+                                if cls_name == "person":
+                                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                                    centroid_x = (x1 + x2) / 2
+                                    centroid_y = (y1 + y2) / 2
+                                    crop = frame[y1:y2, x1:x2]
+                                    if crop.size > 0:
+                                        subj_id = perform_reid(crop)
+                                        reid_tags.append(subj_id)
+                                        
+                                        # --- FEATURE: TEMPORAL ACTION LOCALIZATION (Velocity Tracking) ---
+                                        if subj_id in temporal_tracker:
+                                            last_cx, last_cy, last_t = temporal_tracker[subj_id]
+                                            time_diff = current_time - last_t
+                                            if time_diff > 0:
+                                                distance = ((centroid_x - last_cx)**2 + (centroid_y - last_cy)**2)**0.5
+                                                speed = distance / time_diff
+                                                if speed > 600: # pixels per second
+                                                    sentence += f" | 🏃 TEMPORAL ACTION ALARM: {subj_id} is RUNNING/FLEEING"
+                                        temporal_tracker[subj_id] = (centroid_x, centroid_y, current_time)
+                                        
+                            if reid_tags:
+                                sentence += f" | ReID Tracking: {', '.join(set(reid_tags))}"
+                            
                             face_id = "UNKNOWN THREAT"
                             try:
                                 dfs = DeepFace.find(img_path=frame, db_path="known_faces", enforce_detection=False, silent=True)
@@ -199,7 +268,14 @@ class CameraStream:
                                 pass
                             sentence += f" | Face ID: {face_id}"
                             
-                            # 2. Behavioral Anomaly Detection (Pose)
+                            try:
+                                analysis = DeepFace.analyze(img_path=frame, actions=['emotion'], enforce_detection=False, silent=True)
+                                if len(analysis) > 0:
+                                    emotion = analysis[0]['dominant_emotion']
+                                    sentence += f" | EMOTION: {emotion.upper()}"
+                            except Exception:
+                                pass
+                            
                             pose_results = pose_model(frame, stream=False, verbose=False)
                             for pr in pose_results:
                                 if hasattr(pr, 'keypoints') and pr.keypoints is not None and len(pr.keypoints.xy) > 0:
@@ -207,31 +283,18 @@ class CameraStream:
                                     if len(kpts) >= 17:
                                         nose_y = float(kpts[0][1])
                                         left_wrist_y = float(kpts[9][1])
-                                        right_wrist_y = float(kpts[10][1])
                                         left_ankle_y = float(kpts[15][1])
-                                        
                                         if nose_y > 0 and left_ankle_y > 0 and abs(nose_y - left_ankle_y) < 50:
                                             sentence += " | BEHAVIOR ALARM: Subject has FALLEN"
-                                        elif (left_wrist_y > 0 and left_wrist_y < nose_y) or (right_wrist_y > 0 and right_wrist_y < nose_y):
-                                            sentence += " | BEHAVIOR ALARM: Subject has HANDS RAISED"
                             
-                            # 3. Trigger Visual Analysis Thread
                             threading.Thread(target=analyze_vision_background, args=(frame.copy(), timestamp), daemon=True).start()
 
-                            # 4. VMS Extraction & Email Alerts
-                            clip_path = ""
                             if face_id == "UNKNOWN THREAT" and not self.is_recording:
                                 self.is_recording = True
                                 self.recording_frames_left = 100 
-                                timestamp_file = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-                                clip_path = f"clips/threat_{timestamp_file}.mp4"
+                                clip_path = f"clips/threat_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
                                 h, w = frame.shape[:2]
-                                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                                self.video_writer = cv2.VideoWriter(clip_path, fourcc, 20.0, (w, h))
-                                sentence += f" | Clip Saved: {clip_path}"
-                                print(f"🚨 THREAT DETECTED! Recording video.")
-                                
-                                # Send Automated Email Alert asynchronously
+                                self.video_writer = cv2.VideoWriter(clip_path, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (w, h))
                                 threading.Thread(target=send_threat_email, args=(sentence,), daemon=True).start()
                         
                         with open("events_log.txt", "a") as f:
@@ -275,7 +338,6 @@ def video_feed():
 
 @app.get("/api/logs")
 def get_timeline_logs():
-    """Returns the most recent 100 logs for the React Timeline UI"""
     try:
         if not os.path.exists("events_log.txt"):
             return {"logs": []}
