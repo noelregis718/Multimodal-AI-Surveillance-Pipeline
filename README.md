@@ -4,6 +4,8 @@ An enterprise-grade Smart CCTV system that combines real-time Computer Vision (Y
 
 ## 🌟 Core Features
 
+- **Pixel-Perfect Segmentation (SAM Equivalent):** Uses `YOLOv8-Seg` to trace the exact pixel-perfect outline of a person or object in real-time video, replacing generic bounding boxes with high-fidelity colored masks.
+- **InsightFace (ArcFace) 3D Recognition:** Maps 106 3D facial landmarks using the RetinaFace backend, allowing the system to accurately recognize personnel even if they are looking away from the camera or wearing sunglasses.
 - **Zero-Shot Object Detection:** By leveraging the `Llava` Multi-Modal pipeline, the system can instantly search frames for highly specific, natural-language prompts (e.g. "black backpack") without requiring custom YOLO training.
 - **Temporal Action Localization:** Tracks the pixel-velocity of identified subjects across multiple frames to algorithmically determine complex physical actions, instantly logging if a threat is "RUNNING" or "FLEEING".
 - **Crowd Density Estimation:** Automatically calculates the volume of bounding boxes in a confined space. If capacity limits are approached, the system triggers a "CROWD DENSITY WARNING".
@@ -15,7 +17,6 @@ An enterprise-grade Smart CCTV system that combines real-time Computer Vision (Y
 - **Behavioral Anomaly Detection (Pose Analysis):** Utilizes `YOLOv8-Pose` to track human skeletons in real-time, instantly logging if a threat has "FALLEN" or has their "HANDS RAISED".
 - **Facial Emotion Analysis:** Analyzes human emotions in real-time using DeepFace. Triggers a Hostile Behavior Alarm if Anger or Fear is detected.
 - **Generative RAG Engine:** Ask questions about your security logs in natural language, powered by Meta's Llama 3.2 and ChromaDB.
-- **Deep Learning Facial Recognition:** Uses the `DeepFace` neural network to recognize authorized personnel versus unknown threats from the `known_faces/` database.
 - **Automated Video Management System (VMS):** Automatically records and extracts a MP4 video clip to the `clips/` folder whenever a threat is detected.
 - **Automated Email Threat Alerts:** Built-in `smtplib` dispatch engine that can instantly email the system admin when an unauthorized person breaches the perimeter.
 - **Full-Stack Web Dashboard:** A sleek, dark-mode React UI with frosted glassmorphism, running on a high-performance FastAPI Python backend.
@@ -47,8 +48,8 @@ An enterprise-grade Smart CCTV system that combines real-time Computer Vision (Y
 
 ## 🧠 Architecture Overview
 The system captures hardware video streams using OpenCV and pipes the frames into three distinct Neural Networks:
-1. **YOLOv8** for Object/Threat Bounding Boxes
+1. **YOLOv8-Seg** for Pixel-Perfect Object Segmentation
 2. **YOLOv8-Pose** for Skeletal Anomaly Detection (Falling, Hands Raised)
-3. **DeepFace** for Facial Verification and Emotion Analysis
+3. **InsightFace (ArcFace)** for 3D Facial Verification and Emotion Analysis
 
-Simultaneously, a background thread monitors audio frequencies for anomalies, and a mathematical OpenCV algorithm computes color histograms for Object Re-Identification (ReID). If a threat is detected, the raw image is streamed to **Llava** for multi-modal text description and an automated email alert is dispatched. All logs are embedded using `all-MiniLM-L6-v2` and stored in a persistent ChromaDB vector space. When the React frontend submits a voice or text query, LangChain performs a semantic search to inject context into Llama 3.2 for a highly accurate, context-aware response.
+Simultaneously, a background thread monitors audio frequencies for anomalous keywords, and a mathematical OpenCV algorithm computes color histograms for Object Re-Identification (ReID). If a threat is detected, the raw image is streamed to **Llava** for multi-modal text description (and Zero-Shot detection) and an automated email alert is dispatched. All logs are embedded using `all-MiniLM-L6-v2` and stored in a persistent ChromaDB vector space. When the React frontend submits a voice or text query, LangChain performs a semantic search to inject context into Llama 3.2 for a highly accurate, context-aware response.

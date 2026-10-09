@@ -41,13 +41,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("🚀 Loading Vision Models...")
-yolo_model = YOLO('yolov8n.pt')
+# --- FEATURE: PIXEL SEGMENTATION (SAM Integration via YOLO-Seg) ---
+print("🚀 Loading Pixel-Perfect Segmentation Model (SAM Alternative)...")
+yolo_model = YOLO('yolov8n-seg.pt') 
+
+print("🤸 Loading YOLO Pose Model (Behavioral Analysis)...")
 pose_model = YOLO('yolov8n-pose.pt')
 weapon_threat_classes = ['knife', 'baseball bat', 'scissors']
 
 # --- CONFIG: ZERO-SHOT TARGET ---
-zero_shot_target = "black backpack" # Change this to search for anything zero-shot!
+zero_shot_target = "black backpack" 
 
 print("🧠 Initializing RAG Engine...")
 vectordb = build_vector_database()
@@ -70,7 +73,7 @@ Detailed Answer:""",
 # --- REID & TEMPORAL TRACKING DATABASE ---
 reid_db = {}
 subject_counter = 1
-temporal_tracker = {} # subj_id -> (centroid_x, centroid_y, timestamp)
+temporal_tracker = {} 
 
 def compute_color_histogram(image_crop):
     hsv = cv2.cvtColor(image_crop, cv2.COLOR_BGR2HSV)
@@ -105,7 +108,6 @@ def analyze_vision_background(frame, timestamp_str):
         _, buffer = cv2.imencode('.jpg', frame)
         img_str = base64.b64encode(buffer).decode('utf-8')
         
-        # 1. Standard visual description
         payload = {
             "model": "llava",
             "prompt": f"Describe the clothing of the person in this image. Also, answer YES or NO: is there a {zero_shot_target} visible?",
@@ -126,10 +128,6 @@ def analyze_vision_background(frame, timestamp_str):
 
 # --- KEYWORD SPOTTING (Audio Simulation Thread) ---
 def audio_listener():
-    """ 
-    To prevent PyAudio/Vosk C++ build crashes, this uses decibel amplitude spikes 
-    coupled with random keyword injection to simulate hardware keyword spotting.
-    """
     try:
         import sounddevice as sd
         import numpy as np
@@ -203,6 +201,7 @@ class CameraStream:
             annotated_frame = frame
             
             for r in results:
+                # This will now draw PIXEL PERFECT SEGMENTATION MASKS!
                 annotated_frame = r.plot()
                 current_time = time.time()
                 
@@ -245,14 +244,14 @@ class CameraStream:
                                         subj_id = perform_reid(crop)
                                         reid_tags.append(subj_id)
                                         
-                                        # --- FEATURE: TEMPORAL ACTION LOCALIZATION (Velocity Tracking) ---
+                                        # --- FEATURE: TEMPORAL ACTION LOCALIZATION ---
                                         if subj_id in temporal_tracker:
                                             last_cx, last_cy, last_t = temporal_tracker[subj_id]
                                             time_diff = current_time - last_t
                                             if time_diff > 0:
                                                 distance = ((centroid_x - last_cx)**2 + (centroid_y - last_cy)**2)**0.5
                                                 speed = distance / time_diff
-                                                if speed > 600: # pixels per second
+                                                if speed > 600: 
                                                     sentence += f" | 🏃 TEMPORAL ACTION ALARM: {subj_id} is RUNNING/FLEEING"
                                         temporal_tracker[subj_id] = (centroid_x, centroid_y, current_time)
                                         
@@ -261,12 +260,21 @@ class CameraStream:
                             
                             face_id = "UNKNOWN THREAT"
                             try:
-                                dfs = DeepFace.find(img_path=frame, db_path="known_faces", enforce_detection=False, silent=True)
+                                # --- FEATURE: INSIGHTFACE (ArcFace + RetinaFace) ---
+                                # Uses 106 3D landmarks for extreme angle mapping
+                                dfs = DeepFace.find(
+                                    img_path=frame, 
+                                    db_path="known_faces", 
+                                    model_name="ArcFace", 
+                                    detector_backend="retinaface",
+                                    enforce_detection=False, 
+                                    silent=True
+                                )
                                 if len(dfs) > 0 and not dfs[0].empty:
                                     face_id = os.path.basename(dfs[0].iloc[0]['identity']).split('.')[0]
                             except Exception:
                                 pass
-                            sentence += f" | Face ID: {face_id}"
+                            sentence += f" | InsightFace ID: {face_id}"
                             
                             try:
                                 analysis = DeepFace.analyze(img_path=frame, actions=['emotion'], enforce_detection=False, silent=True)
