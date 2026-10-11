@@ -1,6 +1,6 @@
-# 🛡️ Nexus Vision AI - Enterprise Surveillance Pipeline
+# 🛡️ Argus AI - Autonomous Multimodal Defense Intelligence
 
-An enterprise-grade Smart CCTV system that combines real-time Computer Vision (YOLOv8) with a Generative AI RAG Chatbot (Llama 3.2 + ChromaDB) to allow users to query security logs in natural language.
+An enterprise-grade autonomous surveillance intelligence system that combines real-time Computer Vision (YOLOv8-Seg, YOLO-Pose, DeepFace ArcFace, Zero-Shot Llava) with acoustic keyword spotting and a Generative AI RAG Chatbot (Llama 3.2 + ChromaDB) for natural language security querying.
 
 ## 🌟 Core Features
 

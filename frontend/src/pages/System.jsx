@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Camera, MessageSquare, Send, Mic, Clock, Grid } from 'lucide-react';
+import { Camera, MessageSquare, Send, Mic, Clock, Grid, Terminal, Radio, ShieldAlert } from 'lucide-react';
 
 function System() {
   const [query, setQuery] = useState('');
   const [cameraActive, setCameraActive] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'ai', content: 'System active. What would you like to know about today\'s security events?' }
+    { role: 'ai', content: 'Argus AI active. Ask me anything regarding today\'s telemetry, identified personnel, or threat anomalies.' }
   ]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ function System() {
       const response = await axios.post('http://localhost:8000/api/chat', { query: userMsg });
       setMessages(prev => [...prev, { role: 'ai', content: response.data.answer }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'ai', content: 'Error connecting to backend. Make sure the FastAPI server is running on port 8000.' }]);
+      setMessages(prev => [...prev, { role: 'ai', content: 'Error connecting to backend. Please ensure FastAPI is running on port 8000.' }]);
     }
     setLoading(false);
   };
@@ -81,24 +81,26 @@ function System() {
   };
 
   return (
-    <div className="system-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+    <div className="system-grid">
       
       {/* LEFT COLUMN: Multi-Camera Grid + Timeline */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '100%' }}>
         
         {/* --- MULTI-CAMERA SECURITY GRID --- */}
-        <div className="glass-panel video-container" style={{ flex: '0 0 auto', padding: '15px' }}>
-          <div className="system-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <Grid size={20} color="var(--primary)" /> 
-              Multi-Sensor Camera Array (AI + Thermal + Night Vision)
+        <div className="glass-panel video-container" style={{ padding: '16px' }}>
+          <div className="system-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Grid size={18} color="#ffffff" /> 
+              <span>Multi-Sensor Sensor Matrix</span>
+              <div className="status-dot" style={{ background: cameraActive ? 'var(--accent-emerald)' : 'var(--accent-red)' }} />
             </div>
             <button 
               onClick={toggleCamera} 
-              className="btn-primary" 
-              style={{padding: '6px 12px', fontSize: '0.8rem'}}
+              className={cameraActive ? "btn-secondary" : "btn-primary"} 
+              style={{ padding: '6px 16px', fontSize: '0.78rem' }}
             >
-              {cameraActive ? 'Shutdown Array' : 'Boot Array'}
+              <Radio size={12} />
+              <span>{cameraActive ? 'Shutdown Array' : 'Boot Array'}</span>
             </button>
           </div>
           
@@ -106,55 +108,80 @@ function System() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               
               {/* CAM 01: MAIN AI INFERENCE */}
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
-                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#10b981', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 01: MAIN ENTRY (YOLO+POSE)</div>
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#09090b', border: '1px solid var(--glass-border)', aspectRatio: '4/3' }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', padding: '3px 8px', fontSize: '10px', zIndex: 10, borderRadius: '6px', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="status-dot" />
+                  <span>CAM_01 // YOLO_SEG_POSE</span>
+                </div>
                 <img src="http://localhost:8000/api/video_feed" alt="Cam 1" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
 
               {/* CAM 02: NIGHT VISION SIMULATION */}
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
-                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#ef4444', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 02: NIGHT VISION</div>
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#09090b', border: '1px solid var(--glass-border)', aspectRatio: '4/3' }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', padding: '3px 8px', fontSize: '10px', zIndex: 10, borderRadius: '6px', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="status-dot" style={{ background: '#38bdf8' }} />
+                  <span>CAM_02 // NIGHT_VISION_IR</span>
+                </div>
                 <img src="http://localhost:8000/api/video_feed" alt="Cam 2" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'sepia(1) hue-rotate(90deg) brightness(1.2)' }} />
               </div>
 
               {/* CAM 03: THERMAL IMAGING SIMULATION */}
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
-                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#f59e0b', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 03: THERMAL INFRARED</div>
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#09090b', border: '1px solid var(--glass-border)', aspectRatio: '4/3' }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', padding: '3px 8px', fontSize: '10px', zIndex: 10, borderRadius: '6px', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="status-dot" style={{ background: '#f59e0b' }} />
+                  <span>CAM_03 // THERMAL_INFRARED</span>
+                </div>
                 <img src="http://localhost:8000/api/video_feed" alt="Cam 3" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'invert(1) hue-rotate(180deg) brightness(1.5)' }} />
               </div>
 
               {/* CAM 04: HIGH CONTRAST SECURITY */}
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
-                <div style={{ position: 'absolute', top: 5, left: 5, background: 'rgba(0,0,0,0.7)', color: '#3b82f6', padding: '2px 6px', fontSize: '10px', zIndex: 10, borderRadius: '4px', fontWeight: 'bold' }}>CAM 04: X-RAY CONTRAST</div>
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: '#09090b', border: '1px solid var(--glass-border)', aspectRatio: '4/3' }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', color: '#ffffff', padding: '3px 8px', fontSize: '10px', zIndex: 10, borderRadius: '6px', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="status-dot" style={{ background: '#a855f7' }} />
+                  <span>CAM_04 // HIGH_CONTRAST_XRAY</span>
+                </div>
                 <img src="http://localhost:8000/api/video_feed" alt="Cam 4" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'grayscale(1) contrast(2.5)' }} />
               </div>
               
             </div>
           ) : (
-            <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: '#000', minHeight: '300px', borderRadius: '12px'}}>
-              Security Array is Offline.
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', background: '#09090b', minHeight: '260px', borderRadius: '14px', border: '1px dashed var(--glass-border)' }}>
+              <Radio size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>// CAMERA ARRAY OFFLINE //</span>
             </div>
           )}
         </div>
 
         {/* TIMELINE COMPONENT */}
-        <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <div className="system-header">
-            <Clock size={20} color="var(--accent)" />
-            Live Event Timeline (Past 7 Days)
+        <div className="glass-panel" style={{ flex: 1, minHeight: '280px', display: 'flex', flexDirection: 'column' }}>
+          <div className="system-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={16} color="#ffffff" />
+              <span>Event Timeline</span>
+            </div>
+            <div className="pill-badge" style={{ padding: '2px 10px', fontSize: '0.68rem' }}>
+              <span>{logs.length} EVENTS BUFFERED</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px', padding: '0 20px 20px 20px' }}>
-            {logs.length === 0 ? <p style={{color: 'var(--text-muted)'}}>No events recorded yet.</p> : null}
+          <div style={{ flex: 1, overflowY: 'auto', maxHeight: '340px', display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px' }}>
+            {logs.length === 0 ? (
+              <p style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: '0.82rem', textAlign: 'center', padding: '30px 0' }}>
+                // No telemetry events recorded yet //
+              </p>
+            ) : null}
             {logs.map((log, i) => {
-              const isThreat = log.includes('ALARM') || log.includes('THREAT') || log.includes('WEAPON');
+              const isThreat = log.includes('ALARM') || log.includes('THREAT') || log.includes('WEAPON') || log.includes('FALLEN');
               return (
                 <div key={i} style={{ 
-                  padding: '12px', 
-                  background: isThreat ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)', 
-                  borderRadius: '8px', 
-                  borderLeft: isThreat ? '4px solid #ef4444' : '4px solid var(--primary)',
-                  fontSize: '0.85rem',
-                  lineHeight: '1.4'
+                  padding: '10px 14px', 
+                  background: isThreat ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255,255,255,0.02)', 
+                  borderRadius: '10px', 
+                  border: isThreat ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--glass-border)',
+                  borderLeft: isThreat ? '3px solid var(--accent-red)' : '3px solid rgba(255,255,255,0.2)',
+                  fontSize: '0.82rem',
+                  lineHeight: '1.45',
+                  fontFamily: 'var(--font-mono)',
+                  color: isThreat ? '#fca5a5' : 'var(--text-muted)'
                 }}>
                   {log}
                 </div>
@@ -164,12 +191,19 @@ function System() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: AI Chat */}
-      <div className="glass-panel chat-container" style={{ height: '100%' }}>
-        <div className="system-header">
-          <MessageSquare size={20} color="var(--accent)" />
-          Llama 3.2 Security Assistant
+      {/* RIGHT COLUMN: AI Copilot Chat */}
+      <div className="glass-panel chat-container" style={{ minHeight: '100%' }}>
+        <div className="system-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Terminal size={16} color="#ffffff" />
+            <span>Llama 3.2 Security Copilot</span>
+          </div>
+          <div className="pill-badge" style={{ padding: '2px 10px', fontSize: '0.68rem' }}>
+            <div className="status-dot" />
+            <span>RAG ONLINE</span>
+          </div>
         </div>
+
         <div className="chat-messages">
           {messages.map((m, i) => (
             <div key={i} className={`chat-bubble ${m.role}`}>
@@ -177,28 +211,41 @@ function System() {
             </div>
           ))}
           {loading && (
-            <div className="chat-bubble ai" style={{opacity: 0.7}}>
-              Searching ChromaDB logs...
+            <div className="chat-bubble ai" style={{ opacity: 0.7, fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+              // Querying ChromaDB Vector Index...
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
+
         <form onSubmit={handleChat} className="chat-input-area">
           <input 
             type="text" 
             className="chat-input"
             value={query} 
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask about security events (e.g., 'Did you see any people?')"
+            placeholder="Query telemetry (e.g. 'Were there any weapons detected?')"
           />
-          <button type="button" onClick={startListening} className="btn-send" style={{background: isListening ? '#ef4444' : 'var(--accent)', marginRight: '5px'}} title="Voice Query">
-            <Mic size={18} />
+          <button 
+            type="button" 
+            onClick={startListening} 
+            className="btn-secondary"
+            style={{ 
+              padding: '0 14px', 
+              borderRadius: '10px',
+              color: isListening ? 'var(--accent-red)' : '#ffffff',
+              borderColor: isListening ? 'var(--accent-red)' : 'var(--glass-border)'
+            }} 
+            title="Speech Recognition"
+          >
+            <Mic size={16} />
           </button>
-          <button type="submit" className="btn-send" disabled={loading} title="Send">
-            <Send size={18} />
+          <button type="submit" className="btn-send" disabled={loading} title="Send Inquiry">
+            <Send size={15} />
           </button>
         </form>
       </div>
+
     </div>
   );
 }
